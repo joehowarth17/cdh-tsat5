@@ -38,6 +38,7 @@
 // INCLUDES
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------
 #include <stdint.h>
+#include <stdbool.h>
 #include "spi.h"
 
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -59,6 +60,10 @@
 #define FLASH_REG_STAT_ECC0 (1 << 4)
 #define FLASH_REG_STAT_ECC1 (1 << 5)
 #define FLASH_REG_STAT_LUTF (1 << 6)
+
+#define FLASH_ID_1	0xEF
+#define FLASH_ID_2	0xAA
+#define FLASH_ID_3	0x21
 
 #define FLASH_BB_LUT_SIZE 20
 
@@ -130,13 +135,15 @@ typedef struct  {
 
 typedef struct  {
 
-  SPI_instance_t *spi;
+  CoreSPIInstance_t spi;
   mss_gpio_id_t ss_port_id;	/* Slave select GPIO pin */
 
-  size_t size = FLASH_DIE_SIZE;
+  size_t size;
   FlashBadBlockLUT_t bb_lut;
   uint32_t bb_reserve : 8; /* # of blocks to reserve at the end of each die. */
   uint32_t ecc_chk : 1;    /* Check ECC when reading. */
+
+
 
 }FlashDevice_t;
 
@@ -164,7 +171,7 @@ typedef struct  {
 //	dev:			This should be a pointer to a FLASH_dev struct, which will be
 //					used to refer to the device.
 //
-//	spi:			This should be a pointer to the spi instance used.
+//	spi:			This should be the spi instance used.
 //					This should already be initialized.
 //
 //  ss_pin: 		This parameter should be the pin used as the slave select.
@@ -176,9 +183,34 @@ typedef struct  {
 //	ecc_check:		This selects if the error correcting code (ecc) is used.
 //
 // Returns:
-//  Returns FLASH_OK
+//  Returns FLASH_OK if the flash memory id is successfully read.
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-FlashStatus_t flash_dev_init(FlashDevice_t * dev,SPI_instance_t *spi, mss_gpio_id_t ss_pin, uint8_t bb_reserve, EccCheck_t ecc_check);
+FlashStatus_t flash_dev_init(FlashDevice_t * dev,CoreSPIInstance_t spi, mss_gpio_id_t ss_pin, uint8_t bb_reserve, EccCheck_t ecc_check);
+
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------
+// Description:
+//  This function reads from the flash memory.
+//
+// Parameters:
+//
+//	dev:			This should be a pointer to a FLASH_dev struct, which will be
+//					used to refer to the device.
+//
+//	address:		The address to start reading from.
+//
+//  len: 			The number of bytes to read.
+//
+//	dst:			A pointer to where the read bytes will be stored.
+//
+//
+// Returns:
+//  Returns FLASH OK if the read is successful.
+//	Returns FLASH_INVALID if an improper address is used.
+//	Returns FLASH_ERROR if there is a different error.
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+FlashStatus_t flash_read(FlashDevice_t *dev, size_t address, size_t len, void *dst);
+
 
 #endif // FLASH_H
