@@ -180,6 +180,68 @@ static bool flash_op_arg_rx(FlashDevice_t *dd, FlashOperation_t op,size_t arg_le
 static bool flash_op_arg(FlashDevice_t *dd, FlashOperation_t op,size_t arg_len, uint32_t arg);
 
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------
+// Description:
+//  This function reads one of the three status registers.
+//
+// Parameters:
+//
+//	dd:			This should be a pointer to a FLASH_dev struct, which will be
+//				used to refer to the device.
+//
+//	reg:		The register to be read.
+//
+//
+//
+// Returns:
+//  The value of the status register.
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------
+static uint8_t flash_read_reg(FlashDevice_t *dd,FlashReg_t reg);
+
+
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------
+// Description:
+//  This function writes to one of the three status registers.
+//
+// Parameters:
+//
+//	dd:			This should be a pointer to a FLASH_dev struct, which will be
+//				used to refer to the device.
+//
+//	reg:		The register to be write.
+//
+//	value:		The value to write to the register.
+//
+// Returns:
+//  True if successful, false if not.
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------
+static bool flash_write_reg(FlashDevice_t *dd, FlashReg_t reg,uint8_t value);
+
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------
+// Description:
+//  This function transmits to the flash over spi.
+//
+// Parameters:
+//
+//	dd:			This should be a pointer to a FLASH_dev struct, which will be
+//				used to refer to the device.
+//
+//	tx_len:		The number of bytes to send, excluding dummy bytes..
+//
+//	tx_data:	A pointer to the data to send.
+//
+//	dummy_len:	The number of dummy bytes.
+//
+//	rx_len:		The number of bytes to receive.
+//
+//	rx_data:	A pointer to where the received data will be stored.
+//
+// Returns:
+//  Always returns true.
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------
+static bool flash_txn(FlashDevice_t *dd, size_t tx_len,const void *tx_data, int dummy_len, size_t rx_len,void *rx_data);
+
+
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------
 // FUNCTIONS
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -257,7 +319,7 @@ static bool flash_op_arg_rx(FlashDevice_t *dd, FlashOperation_t op,size_t arg_le
 
 static bool flash_op_arg(FlashDevice_t *dd, FlashOperation_t op,size_t arg_len, uint32_t arg) {
 
-	return w25xxx_op_arg_rx(dd, op, arg_len, arg, 0, 0, NULL);
+	return flash_op_arg_rx(dd, op, arg_len, arg, 0, 0, NULL);
 }
 
 FlashStatus_t flash_page_data_read(FlashDevice_t *dd,uint16_t page_num) {
@@ -288,6 +350,46 @@ FlashStatus_t flash_page_data_read(FlashDevice_t *dd,uint16_t page_num) {
 	}
 
 	return FLASH_OK;
+}
+
+static uint8_t flash_read_reg(FlashDevice_t *dd,FlashReg_t reg) {
+
+  uint8_t reg_addr = reg, reg_value = 0;
+  flash_op_arg_rx(dd, FLASH_OP_READ_REG, 1, reg_addr, 0, 1, &reg_value);
+
+  return reg_value;
+}
+
+static bool flash_write_reg(FlashDevice_t *dd, FlashReg_t reg,uint8_t value) {
+
+  return flash_op_arg(dd, FLASH_OP_WRITE_REG, 2,(((uint32_t) reg) << 8 | value));
+}
+
+static bool flash_txn(FlashDevice_t *dd, size_t tx_len,const void *tx_data, int dummy_len, size_t rx_len,void *rx_data) {
+
+
+	size_t total_len_tx = tx_len+dummy_len;
+	uint8_t command_buffer[total_len_tx];
+
+	const uint8_t *p = tx_data;
+
+	//Create one command buffer with both the command and the dummy bytes.
+	int i;
+	for(i=0;i<total_len_tx;i++){
+
+		if(i<tx_len){
+			command_buffer[i] = *p;
+		}
+		else{
+
+			command_buffer[i] = 0;
+		}
+		p++;
+	}
+
+	spi_transaction_block_read_without_toggle(dd->spi,SPI_SLAVE_0, dd->ss_port_id,command_buffer,total_len_tx,rx_data,rx_len);
+
+  return true;
 }
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -330,6 +432,69 @@ out:
   return res;
 }
 
+//FlashStatus_t flash_write(FlashDevice_t *dd,size_t address, size_t len,const void *src) {
+//
+//
+//  FlashStatus_t res = FLASH_ERROR;
+//  FlashStatus_t res2;
+//
+//  const size_t orig_off = address;
+//  const size_t orig_len = len;
+//
+//  //struct w25xxx_dev_data *dd = (struct w25xxx_dev_data *) dev->dev_data;
+//  const uint8_t *dp = (const uint8_t *) src;
+//  uint8_t die_num;
+//  uint16_t page_num, page_off;
+//
+//  while (len > 0) {
+//    if (!w25xxx_map_page(dd, address, &die_num, &page_num, &page_off)) {
+//      res = MGOS_VFS_DEV_ERR_INVAL;
+//      goto out;
+//    }
+//    uint8_t txn_buf[3 + 128], st;
+//    size_t wr_len = MIN(len, W25XXX_PAGE_SIZE - page_off);
+//    if (!w25mxx_select_die(dd, die_num)) goto out;
+//    /* When modifying part of a page, read it first to ensure correct ECC. */
+//    if (wr_len != W25XXX_PAGE_SIZE) {
+//      if ((res2 = w25xxx_page_data_read(dd, die_num, page_num)) != 0) {
+//        res = res2;
+//        goto out;
+//      }
+//      txn_buf[0] = W25XXX_OP_PROG_RAND_DATA_LOAD;
+//    } else {
+//      txn_buf[0] = W25XXX_OP_PROG_DATA_LOAD;
+//    }
+//    if (!w25xxx_simple_op(dd, W25XXX_OP_WRITE_ENABLE)) goto out;
+//    for (size_t txn_off = 0, txn_len = 0; txn_off < wr_len;
+//         txn_off += txn_len) {
+//      txn_len = MIN(128, wr_len - txn_off);
+//      txn_buf[1] = (page_off + txn_off) >> 8;
+//      txn_buf[2] = (page_off + txn_off) & 0xff;
+//      memcpy(txn_buf + 3, dp, txn_len);
+//      if (!w25xxx_txn(dd, 3 + txn_len, txn_buf, 0, 0, NULL)) goto out;
+//      txn_buf[0] = W25XXX_OP_PROG_RAND_DATA_LOAD;
+//      dp += txn_len;
+//    }
+//    if (!w25xxx_op_arg(dd, W25XXX_OP_PROG_EXECUTE, 1 + 2, page_num)) goto out;
+//    while ((st = w25xxx_read_reg(dd, W25XXX_REG_STAT)) & W25XXX_REG_STAT_BUSY) {
+//    }
+//    if (st & W25XXX_REG_STAT_PFAIL) {
+//      LOG(LL_ERROR, ("Prog failed, page %u:%u", die_num, page_num));
+//      /* TODO(rojer): On-the-fly remapping of bad blocks. */
+//      goto out;
+//    }
+//    address += wr_len;
+//    len -= wr_len;
+//  }
+//  res = MGOS_VFS_DEV_ERR_NONE;
+//out:
+//  LOG((res == 0 ? W25XXX_DEBUG_LEVEL : LL_ERROR),
+//      ("%p write %u @ 0x%x -> %d", dev, (unsigned int) orig_len,
+//       (unsigned int) orig_off, res));
+//  (void) orig_off;
+//  (void) orig_len;
+//  return res;
+//}
 
 
 FlashStatus_t flash_dev_init(FlashDevice_t * dev,CoreSPIInstance_t spi, mss_gpio_id_t ss_pin, uint8_t bb_reserve, EccCheck_t ecc_check){
@@ -344,8 +509,8 @@ FlashStatus_t flash_dev_init(FlashDevice_t * dev,CoreSPIInstance_t spi, mss_gpio
 
 	FlashOperation_t command = FLASH_OP_READ_JEDEC_ID;
 	uint8_t id_buffer[3];
-	spi_transaction_block_read_without_toggle(dev->spi,SPI_SLAVE_0,dev->ss_port_id,(uint8_t *)&command,1,id_buffer,3);
-
+	//spi_transaction_block_read_without_toggle(dev->spi,SPI_SLAVE_0,dev->ss_port_id,(uint8_t *)&command,1,id_buffer,3);
+	flash_txn(dev,1,&command,1,3,id_buffer);
 	if(id_buffer[0] == FLASH_ID_1 && id_buffer[1] == FLASH_ID_2 && id_buffer[2] == FLASH_ID_3){
 
 		result = FLASH_OK;

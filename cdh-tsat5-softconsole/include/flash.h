@@ -98,7 +98,7 @@ typedef enum  {
   FLASH_REG_CONF = 0xb0, /* Configuration register */
   FLASH_REG_STAT = 0xc0, /* Status register */
 
-} Flash_reg_t;
+} FlashReg_t;
 
 typedef enum{
 
@@ -210,6 +210,7 @@ FlashStatus_t flash_dev_init(FlashDevice_t * dev,CoreSPIInstance_t spi, mss_gpio
 //	Returns FLASH_ERROR if there is a different error.
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------
 
+//Add part in detect(), where the die is put into buffered read, unprotect and read bb lut.
 FlashStatus_t flash_read(FlashDevice_t *dev, size_t address, size_t len, void *dst);
 
 

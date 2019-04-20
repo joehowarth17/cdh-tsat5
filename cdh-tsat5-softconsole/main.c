@@ -124,6 +124,7 @@
 #include "spi.h"
 #include "uart.h"
 #include "watchdog.h"
+#include "flash.h"
 
 
 /* External variables */
@@ -138,6 +139,12 @@ static void prvSetupHardware( void );
  * Test code for CoreSPI.
  */
 static void vTestSPI(void *pvParameters);
+
+
+/*
+ * Test code for flash memory.
+ */
+static void vTestFlash(void *pvParameters);
 
 /*
  * Test code for CAN.
@@ -193,6 +200,13 @@ int main( void )
 
     status = xTaskCreate(vTestSPI,
                          "Test SPI2",
+                         1000,
+                         NULL,
+                         1,
+                         NULL);
+
+    status = xTaskCreate(vTestFlash,
+                         "Test Flash",
                          1000,
                          NULL,
                          1,
@@ -311,6 +325,31 @@ static void vTestCANRx(void *pvParameters)
         {
             messages_processed++;
         }
+    }
+}
+
+/*-----------------------------------------------------------*/
+static void vTestFlash(void *pvParameters)
+{
+
+	FlashDevice_t flash_device;
+
+	FlashStatus_t result = flash_dev_init(&flash_device,CORE_SPI_0, MSS_GPIO_5, 8, ECC_ON);
+
+	if(result != FLASH_OK){
+		while(1);
+	}
+
+	uint8_t data_rx[2048];
+	result = flash_read(&flash_device,0,2048,data_rx);
+
+	if(result != FLASH_OK){
+		while(1);
+	}
+
+    for (;;)
+    {
+
     }
 }
 
