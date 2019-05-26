@@ -6,7 +6,7 @@
 
 # Family: SmartFusion2 , Die: M2S010 , Package: 144 TQ
 
-# Date generated: Thu Mar 28 10:50:46 2019 
+# Date generated: Sun Apr 28 12:42:29 2019 
 
 
 # 
@@ -24,18 +24,6 @@
 # 
 # User Locked I/O settings
 # 
-
-set_io CAN_RX_F2M     \
-    -pinname 92       \
-    -fixed yes        \
-    -DIRECTION INPUT
-
-
-set_io CAN_TX_M2F      \
-    -pinname 94        \
-    -fixed yes         \
-    -DIRECTION OUTPUT
-
 
 set_io GPIO_0_M2F      \
     -pinname 117       \
@@ -56,7 +44,7 @@ set_io GPIO_3_M2F      \
 
 
 set_io GPIO_5_M2F      \
-    -pinname 125       \
+    -pinname 21        \
     -fixed yes         \
     -DIRECTION OUTPUT
 
@@ -86,19 +74,19 @@ set_io MMUART_0_TXD_M2F  \
 
 
 set_io m_miso         \
-    -pinname 21       \
+    -pinname 16       \
     -fixed yes        \
     -DIRECTION INPUT
 
 
 set_io m_mosi          \
-    -pinname 22        \
+    -pinname 94        \
     -fixed yes         \
     -DIRECTION OUTPUT
 
 
 set_io m_sck           \
-    -pinname 16        \
+    -pinname 92        \
     -fixed yes         \
     -DIRECTION OUTPUT
 

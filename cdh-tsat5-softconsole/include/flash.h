@@ -39,6 +39,7 @@
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------
 #include <stdint.h>
 #include <stdbool.h>
+#include <string.h>
 #include "spi.h"
 
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -185,8 +186,31 @@ typedef struct  {
 // Returns:
 //  Returns FLASH_OK if the flash memory id is successfully read.
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------
-
+//Add part in detect(), where the die is put into buffered read, unprotect and read bb lut.
 FlashStatus_t flash_dev_init(FlashDevice_t * dev,CoreSPIInstance_t spi, mss_gpio_id_t ss_pin, uint8_t bb_reserve, EccCheck_t ecc_check);
+
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------
+// Description:
+//  This function writes to the flash memory.
+//
+// Parameters:
+//
+//	dev:			This should be a pointer to a FLASH_dev struct, which will be
+//					used to refer to the device.
+//
+//	address:		The address to start writing from.
+//
+//  len: 			The number of bytes to write.
+//
+//	dst:			A pointer to the src data.
+//
+//
+// Returns:
+//  Returns FLASH OK if the read is successful.
+//	Returns FLASH_INVALID if an improper address is used.
+//	Returns FLASH_ERROR if there is a different error.
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------
+FlashStatus_t flash_write_(FlashDevice_t *dd,size_t address, size_t len,const void *src);
 
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------
 // Description:
@@ -209,9 +233,29 @@ FlashStatus_t flash_dev_init(FlashDevice_t * dev,CoreSPIInstance_t spi, mss_gpio
 //	Returns FLASH_INVALID if an improper address is used.
 //	Returns FLASH_ERROR if there is a different error.
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-//Add part in detect(), where the die is put into buffered read, unprotect and read bb lut.
 FlashStatus_t flash_read(FlashDevice_t *dev, size_t address, size_t len, void *dst);
+
+
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------
+// Description:
+//  This function erases the flash memory.
+//
+// Parameters:
+//
+//	dev:			This should be a pointer to a FLASH_dev struct, which will be
+//					used to refer to the device.
+//
+//	block_num:		The block to start erasing from.
+//
+//  num_blocks: 	The number of blocks to erase.
+//
+//
+// Returns:
+//  Returns FLASH OK if the read is successful.
+//	Returns FLASH_INVALID if an improper address is used.
+//	Returns FLASH_ERROR if there is a different error.
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------
+FlashStatus_t flash_erase_blocks(FlashDevice_t *dd, size_t block_num, size_t num_blocks);
 
 
 #endif // FLASH_H

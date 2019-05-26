@@ -176,38 +176,38 @@ int main( void )
     prvSetupHardware();
 
     // Create LED spinning task
-    status = xTaskCreate(    vTaskSpinLEDs,              // The task function that spins the LEDs
-                            "LED Spinner",               // Text name for debugging
-                            1000,                        // Size of the stack allocated for this task
-                            NULL,                        // Task parameter is not used
-                            1,                           // Task runs at priority 1
-                            NULL);                       // Task handle is not used
+//    status = xTaskCreate(    vTaskSpinLEDs,              // The task function that spins the LEDs
+//                            "LED Spinner",               // Text name for debugging
+//                            1000,                        // Size of the stack allocated for this task
+//                            NULL,                        // Task parameter is not used
+//                            1,                           // Task runs at priority 1
+//                            NULL);                       // Task handle is not used
 
     // Create UART0 RX Task
-    status = xTaskCreate(    vTaskUARTBridge,            // The task function that handles all UART RX events
-                            "UART0 Receiver",            // Text name for debugging
-                            1000,                        // Size of the stack allocated for this task
-                            (void *) &g_mss_uart0,       // Task parameter is the UART instance used by the task
-                            2,                           // Task runs at priority 2
-                            &xUART0RxTaskToNotify);      // Task handle for task notification
-
-    status = xTaskCreate(vTestSPI,
-                         "Test SPI",
-                         1000,
-                         NULL,
-                         1,
-                         NULL);
-
-    status = xTaskCreate(vTestSPI,
-                         "Test SPI2",
-                         1000,
-                         NULL,
-                         1,
-                         NULL);
+//    status = xTaskCreate(    vTaskUARTBridge,            // The task function that handles all UART RX events
+//                            "UART0 Receiver",            // Text name for debugging
+//                            1000,                        // Size of the stack allocated for this task
+//                            (void *) &g_mss_uart0,       // Task parameter is the UART instance used by the task
+//                            2,                           // Task runs at priority 2
+//                            &xUART0RxTaskToNotify);      // Task handle for task notification
+//
+//    status = xTaskCreate(vTestSPI,
+//                         "Test SPI",
+//                         1000,
+//                         NULL,
+//                         1,
+//                         NULL);
+//
+//    status = xTaskCreate(vTestSPI,
+//                         "Test SPI2",
+//                         1000,
+//                         NULL,
+//                         1,
+//                         NULL);
 
     status = xTaskCreate(vTestFlash,
                          "Test Flash",
-                         1000,
+                         2000,
                          NULL,
                          1,
                          NULL);
@@ -215,26 +215,26 @@ int main( void )
     // TODO - Starting to run out of heap space for these tasks... should start thinking about
     // increasing heap space or managing memory in a smarter manner. First step would be looking
     // at the FreeRTOS configurations and the linker file *.ld.
-    status = xTaskCreate(vTestCANTx,
-                         "Test CAN Tx",
-                         configMINIMAL_STACK_SIZE,
-                         NULL,
-                         1,
-                         NULL);
-
-    status = xTaskCreate(vTestCANRx,
-                         "Test CAN Rx",
-                         configMINIMAL_STACK_SIZE,
-                         NULL,
-                         1,
-                         NULL);
-
-    status = xTaskCreate(vTestWD,
-                         "Test WD",
-                         configMINIMAL_STACK_SIZE,
-                         NULL,
-                         1,
-                         NULL);
+//    status = xTaskCreate(vTestCANTx,
+//                         "Test CAN Tx",
+//                         configMINIMAL_STACK_SIZE,
+//                         NULL,
+//                         1,
+//                         NULL);
+//
+//    status = xTaskCreate(vTestCANRx,
+//                         "Test CAN Rx",
+//                         configMINIMAL_STACK_SIZE,
+//                         NULL,
+//                         1,
+//                         NULL);
+//
+//    status = xTaskCreate(vTestWD,
+//                         "Test WD",
+//                         configMINIMAL_STACK_SIZE,
+//                         NULL,
+//                         1,
+//                         NULL);
 
     vTaskStartScheduler();
 
@@ -334,18 +334,65 @@ static void vTestFlash(void *pvParameters)
 
 	FlashDevice_t flash_device;
 
-	FlashStatus_t result = flash_dev_init(&flash_device,CORE_SPI_0, MSS_GPIO_5, 8, ECC_ON);
+	FlashStatus_t result = flash_dev_init(&flash_device,CORE_SPI_0, MSS_GPIO_5, 8, ECC_OFF);
+
+	MSS_GPIO_config( MSS_GPIO_3, MSS_GPIO_OUTPUT_MODE );
 
 	if(result != FLASH_OK){
 		while(1);
 	}
-
+	int done =0;
 	uint8_t data_rx[2048];
-	result = flash_read(&flash_device,0,2048,data_rx);
+	int i;
+	int pageNum = 0;
+	int blockNum=0;
+	int address=0x0000819;
+	int numBadBlock = 0;
+	int led = 0;
+	int BB[50];
+	uint8_t data_tx[2048];
+
+	for(i=0;i<2048;i++){
+		data_tx[i] = 0;
+		data_rx[i] = 0;
+	}
+
+	for(i=0;i<25;i++){
+		data_tx[i] = i;
+	}
+	result = flash_read(&flash_device,address-25,2048,data_rx);
+
 
 	if(result != FLASH_OK){
 		while(1);
 	}
+
+	result = flash_erase_blocks(&flash_device,0,1);
+
+	if(result != FLASH_OK){
+		while(1);
+	}
+
+	result = flash_read(&flash_device,address-25,2048,data_rx);
+
+
+	if(result != FLASH_OK){
+		while(1);
+	}
+
+	result = flash_write_(&flash_device,address,25,data_tx);
+
+	if(result != FLASH_OK){
+		while(1);
+	}
+
+	result = flash_read(&flash_device,address-25,2048,data_rx);
+
+
+	if(result != FLASH_OK){
+		while(1);
+	}
+
 
     for (;;)
     {
